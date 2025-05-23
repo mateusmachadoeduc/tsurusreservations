@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Restaurante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .table-occupied {
+            background-color: #fecaca;
+        }
+        .table-available {
+            background-color: #bbf7d0;
+        }
+        .table-reserved {
+            background-color: #bfdbfe;
+        }
+        .counter-box {
+            transition: all 0.3s ease;
+        }
+        .counter-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .full-capacity {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .reservation-item {
+            transition: all 0.2s ease;
+        }
+        .reservation-item:hover {
+            transform: translateX(5px);
+        }
+        .waiting-item {
+            transition: all 0.2s ease;
+        }
+        .waiting-item:hover {
+            background-color: #f3f4f6;
+        }
+        .combined-tables {
+            background-color: #e5e7eb;
+        }
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+        }
+        .badge-warning {
+            background-color: #fef08a;
+            color: #854d0e;
+        }
+        .badge-success {
+            background-color: #bbf7d0;
+            color: #166534;
+        }
+        .badge-danger {
+            background-color: #fecaca;
+            color: #991b1b;
+        }
+        .badge-info {
+            background-color: #bfdbfe;
+            color: #1e40af;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8 text-indigo-700">Tsuru's</h1>
+        
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-gray-200 mb-6">
+            <button id="tablesTab" class="tab-button py-2 px-4 font-medium text-indigo-600 border-b-2 border-indigo-600" data-section="tablesSection">Mesas</button>
+            <button id="customersTab" class="tab-button py-2 px-4 font-medium text-gray-500 hover:text-indigo-500" data-section="customersSection">Controle de Entradas</button>
+            <button id="reservationsTab" class="tab-button py-2 px-4 font-medium text-gray-500 hover:text-indigo-500" data-section="reservationsSection">Reservas</button>
+            <button id="waitingTab" class="tab-button py-2 px-4 font-medium text-gray-500 hover:text-indigo-500" data-section="waitingSection">Fila de Espera</button>
+        </div>
+        
+        <!-- Tables Section -->
+        <div id="tablesSection" class="section-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Gerenciamento de Mesas</h2>
+                <button onclick="openAddTableModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Adicionar Mesa
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="tablesContainer">
+                <!-- Tables will be dynamically added here -->
+            </div>
+        </div>
+        
+        <!-- Customers Section -->
+        <div id="customersSection" class="section-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Controle de Entradas</h2>
+                <button onclick="resetCounters()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-redo mr-2"></i> Reiniciar Contadores
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- Homens Counter -->
+                <div class="counter-box bg-white p-6 rounded-lg shadow text-center">
+                    <h3 class="text-lg font-semibold mb-2 text-blue-600">Homens</h3>
+                    <div class="text-4xl font-bold mb-4 text-blue-600" id="menCount">0</div>
+                    <div class="flex justify-center space-x-2">
+                        <button onclick="updateCounter('men', -1)" class="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg hover:bg-blue-200">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button onclick="updateCounter('men', 1)" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mulheres Counter -->
+                <div class="counter-box bg-white p-6 rounded-lg shadow text-center">
+                    <h3 class="text-lg font-semibold mb-2 text-pink-600">Mulheres</h3>
+                    <div class="text-4xl font-bold mb-4 text-pink-600" id="womenCount">0</div>
+                    <div class="flex justify-center space-x-2">
+                        <button onclick="updateCounter('women', -1)" class="bg-pink-100 text-pink-800 px-4 py-2 rounded-lg hover:bg-pink-200">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button onclick="updateCounter('women', 1)" class="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Infantil Counter -->
+                <div class="counter-box bg-white p-6 rounded-lg shadow text-center">
+                    <h3 class="text-lg font-semibold mb-2 text-purple-600">Infantil</h3>
+                    <div class="text-4xl font-bold mb-4 text-purple-600" id="childrenCount">0</div>
+                    <div class="flex justify-center space-x-2">
+                        <button onclick="updateCounter('children', -1)" class="bg-purple-100 text-purple-800 px-4 py-2 rounded-lg hover:bg-purple-200">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button onclick="updateCounter('children', 1)" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Total Counter -->
+            <div class="counter-box bg-white p-6 rounded-lg shadow text-center max-w-md mx-auto mb-4">
+                <h3 class="text-lg font-semibold mb-2 text-gray-800">Total de Pessoas</h3>
+                <div class="text-5xl font-bold mb-2 text-gray-800" id="totalCount">0</div>
+            </div>
+
+            <!-- Capacity Alert -->
+            <div id="capacityAlert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative max-w-md mx-auto mb-4" role="alert">
+                <strong class="font-bold">Atenção!</strong>
+                <span class="block sm:inline">50 pessoas entraram às <span id="fullTime"></span>.</span>
+            </div>
+        </div>
+        
+        <!-- Reservations Section -->
+        <div id="reservationsSection" class="section-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Gerenciamento de Reservas</h2>
+                <div class="flex space-x-2">
+                    <input type="date" id="reservationFilterDate" class="border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <button onclick="filterReservations()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center">
+                        <i class="fas fa-filter mr-2"></i> Filtrar
+                    </button>
+                    <button onclick="resetReservationFilter()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 flex items-center">
+                        <i class="fas fa-times mr-2"></i> Limpar
+                    </button>
+                    <button onclick="openAddReservationModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Nova Reserva
+                    </button>
+                </div>
+            </div>
+            
+            <div id="reservationsByDateContainer">
+                <!-- Reservations grouped by date will be dynamically added here -->
+            </div>
+        </div>
+        
+        <!-- Waiting List Section -->
+        <div id="waitingSection" class="section-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Fila de Espera</h2>
+                <button onclick="openAddWaitingModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Adicionar à Fila
+                </button>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="grid grid-cols-12 bg-gray-100 p-4 font-semibold text-gray-700">
+                    <div class="col-span-3">Cliente</div>
+                    <div class="col-span-2">Telefone</div>
+                    <div class="col-span-2">Pessoas</div>
+                    <div class="col-span-2">Tempo de Espera</div>
+                    <div class="col-span-2">Status</div>
+                    <div class="col-span-1 text-right">Ações</div>
+                </div>
+                <div id="waitingContainer" class="divide-y divide-gray-200">
+                    <!-- Waiting list will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Table Modal -->
+    <div id="addTableModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Adicionar Nova Mesa</h3>
+                <button onclick="closeModal('addTableModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addTableForm" class="space-y-4">
+                <div>
+                    <label for="tableNumber" class="block text-sm font-medium text-gray-700">Número da Mesa</label>
+                    <input type="number" id="tableNumber" name="tableNumber" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="tableCapacity" class="block text-sm font-medium text-gray-700">Capacidade</label>
+                    <input type="number" id="tableCapacity" name="tableCapacity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('addTableModal')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Edit Table Modal -->
+    <div id="editTableModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Editar Mesa</h3>
+                <button onclick="closeModal('editTableModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editTableForm" class="space-y-4">
+                <input type="hidden" id="editTableId">
+                <div>
+                    <label for="editTableNumber" class="block text-sm font-medium text-gray-700">Número da Mesa</label>
+                    <input type="number" id="editTableNumber" name="editTableNumber" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="editTableCapacity" class="block text-sm font-medium text-gray-700">Capacidade</label>
+                    <input type="number" id="editTableCapacity" name="editTableCapacity" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('editTableModal')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Reservation Modal -->
+    <div id="addReservationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Nova Reserva</h3>
+                <button onclick="closeModal('addReservationModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addReservationForm" class="space-y-4">
+                <div>
+                    <label for="reservationCustomer" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+                    <input type="text" id="reservationCustomer" name="reservationCustomer" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="reservationPeople" class="block text-sm font-medium text-gray-700">Quantidade de Pessoas</label>
+                    <input type="number" id="reservationPeople" name="reservationPeople" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="reservationDate" class="block text-sm font-medium text-gray-700">Data</label>
+                    <input type="date" id="reservationDate" name="reservationDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="reservationExtraSeats" class="block text-sm font-medium text-gray-700">Assentos Adicionais (opcional, máximo 3)</label>
+                    <input type="number" id="reservationExtraSeats" name="reservationExtraSeats" min="0" max="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div id="tablesSelectionContainer" class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Mesas Disponíveis</label>
+                    <div id="availableTablesContainer" class="space-y-2">
+                        <!-- Available tables will be dynamically added here -->
+                    </div>
+                    <div id="combinedTablesContainer" class="hidden mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Mesas Combinadas</label>
+                        <div id="combinedTablesList" class="space-y-2">
+                            <!-- Combined tables selection will be dynamically added here -->
+                        </div>
+                        <input type="hidden" id="combinedTables">
+                    </div>
+                    <div id="selectedTableContainer" class="hidden mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Mesa Selecionada:</label>
+                        <div id="selectedTableInfo" class="bg-gray-100 p-2 rounded"></div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('addReservationModal')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Reservation Modal -->
+    <div id="editReservationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Editar Reserva</h3>
+                <button onclick="closeModal('editReservationModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="editReservationForm" class="space-y-4">
+                <input type="hidden" id="editReservationId">
+                <div>
+                    <label for="editReservationCustomer" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+                    <input type="text" id="editReservationCustomer" name="editReservationCustomer" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="editReservationPeople" class="block text-sm font-medium text-gray-700">Quantidade de Pessoas</label>
+                    <input type="number" id="editReservationPeople" name="editReservationPeople" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="editReservationDate" class="block text-sm font-medium text-gray-700">Data</label>
+                    <input type="date" id="editReservationDate" name="editReservationDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="editReservationExtraSeats" class="block text-sm font-medium text-gray-700">Assentos Adicionais (opcional, máximo 3)</label>
+                    <input type="number" id="editReservationExtraSeats" name="editReservationExtraSeats" min="0" max="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div id="editTablesSelectionContainer" class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Mesas Atribuídas</label>
+                    <div id="editAssignedTablesContainer">
+                        <!-- Currently assigned tables will be shown here -->
+                    </div>
+                    <div id="editAvailableTablesContainer" class="mt-4 space-y-2">
+                        <!-- Available tables for editing will be dynamically added here -->
+                    </div>
+                    <div id="editCombinedTablesContainer" class="hidden mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Mesas Combinadas</label>
+                        <div id="editCombinedTablesList" class="space-y-2">
+                            <!-- Combined tables selection for editing will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('editReservationModal')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Waiting List Modal -->
+    <div id="addWaitingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Adicionar à Fila de Espera</h3>
+                <button onclick="closeModal('addWaitingModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addWaitingForm" class="space-y-4">
+                <div>
+                    <label for="waitingCustomer" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+                    <input type="text" id="waitingCustomer" name="waitingCustomer" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="waitingPhone" class="block text-sm font-medium text-gray-700">Telefone</label>
+                    <input type="tel" id="waitingPhone" name="waitingPhone" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="waitingPeople" class="block text-sm font-medium text-gray-700">Quantidade de Pessoas</label>
+                    <input type="number" id="waitingPeople" name="waitingPeople" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('addWaitingModal')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Static data storage (instead of localStorage)
+        let tables = [
+            { id: 1, number: 1, capacity: 4, status: "available" },
+            { id: 2, number: 2, capacity: 6, status: "available" },
+            { id: 3, number: 3, capacity: 2, status: "available" },
+            { id: 4, number: 4, capacity: 8, status: "available" }
+        ];
+        
+        let reservations = [
+            { 
+                id: 1, 
+                customer: "João Silva", 
+                people: 4, 
+                date: "2023-12-15", 
+                tableId: 1,
+                status: "reserved"
+            },
+            { 
+                id: 2, 
+                customer: "Maria Souza", 
+                people: 6, 
+                date: "2023-12-15", 
+                tableId: 2,
+                status: "reserved"
+            }
+        ];
+        
+        let waitingList = [
+            { 
+                id: 1, 
+                name: "Carlos Oliveira", 
+                phone: "(11) 98765-4321", 
+                people: 3, 
+                status: "waiting", 
+                arrivalTime: new Date().toISOString() 
+            }
+        ];
+        
+        let counters = {
+            men: 12,
+            women: 15,
+            children: 8,
+            total: 35,
+            fullCapacityTime: null
+        };
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Show tables section by default
+            showSection('tablesSection');
+            
+            // Set up tab navigation
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    showSection(this.getAttribute('data-section'));
+                });
+            });
+            
+            // Render initial data
+            renderTables();
+            renderReservations();
+            renderWaitingList();
+            updateCounterDisplays();
+            
+            // Check if capacity was reached
+            if (counters.total >= 50 && counters.fullCapacityTime) {
+                showCapacityAlert();
+            }
+            
+            // Set default date to today for reservation forms
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reservationDate').value = today;
+            document.getElementById('editReservationDate').value = today;
+            document.getElementById('reservationFilterDate').value = today;
+        });
+        
+        function setupEventListeners() {
+            // Table form submissions
+            document.getElementById('addTableForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addTable();
+            });
+            
+            document.getElementById('editTableForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                updateTable();
+            });
+            
+            // Reservation form submissions
+            document.getElementById('addReservationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addReservation();
+            });
+            
+            document.getElementById('editReservationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                updateReservation();
+            });
+            
+            // Waiting list form submissions
+            document.getElementById('addWaitingForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addToWaitingList();
+            });
+            
+            // Event listener for people input in reservation form to show available tables
+            document.getElementById('reservationPeople').addEventListener('input', function() {
+                const people = parseInt(this.value) || 0;
+                const extraSeats = parseInt(document.getElementById('reservationExtraSeats').value) || 0;
+                const totalPeople = people + extraSeats;
+                
+                if (totalPeople > 0) {
+                    showAvailableTablesForReservation(totalPeople);
+                }
+            });
+            
+            // Event listener for extra seats input in reservation form
+            document.getElementById('reservationExtraSeats').addEventListener('input', function() {
+                const people = parseInt(document.getElementById('reservationPeople').value) || 0;
+                const extraSeats = parseInt(this.value) || 0;
+                const totalPeople = people + extraSeats;
+                
+                if (totalPeople > 0) {
+                    showAvailableTablesForReservation(totalPeople);
+                }
+            });
+            
+            // Event listener for people input in edit reservation form
+            document.getElementById('editReservationPeople').addEventListener('input', function() {
+                const people = parseInt(this.value) || 0;
+                const extraSeats = parseInt(document.getElementById('editReservationExtraSeats').value) || 0;
+                const totalPeople = people + extraSeats;
+                
+                if (totalPeople > 0) {
+                    showAvailableTablesForEditReservation(totalPeople);
+                }
+            });
+            
+            // Event listener for extra seats input in edit reservation form
+            document.getElementById('editReservationExtraSeats').addEventListener('input', function() {
+                const people = parseInt(document.getElementById('editReservationPeople').value) || 0;
+                const extraSeats = parseInt(this.value) || 0;
+                const totalPeople = people + extraSeats;
+                
+                if (totalPeople > 0) {
+                    showAvailableTablesForEditReservation(totalPeople);
+                }
+            });
+        }
+        
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section-content').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // Show the selected section
+            document.getElementById(sectionId).classList.remove('hidden');
+            
+            // Update tab styling
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
+                button.classList.add('text-gray-500');
+            });
+            
+            // Highlight the active tab
+            const activeTab = document.querySelector(`.tab-button[data-section="${sectionId}"]`);
+            if (activeTab) {
+                activeTab.classList.remove('text-gray-500');
+                activeTab.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
+            }
+        }
+        
+        // Table Management Functions
+        function renderTables() {
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+            
+            if (tables.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-8">
+                        <i class="fas fa-table text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">Nenhuma mesa cadastrada ainda.</p>
+                        <button onclick="openAddTableModal()" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                            Adicionar Primeira Mesa
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            tables.forEach(table => {
+                const tableElement = document.createElement('div');
+                tableElement.className = `rounded-lg shadow p-4 flex flex-col items-center ${table.status === 'available' ? 'table-available' : table.status === 'reserved' ? 'table-reserved' : 'table-occupied'}`;
+                
+                // Check if table has extra seats
+                const reservation = reservations.find(r => 
+                    (r.tableId === table.id || (r.tableIds && r.tableIds.includes(table.id))) && 
+                    r.extraSeats && r.extraSeats > 0
+                );
+                
+                let extraSeatsBadge = '';
+                if (reservation) {
+                    extraSeatsBadge = `<span class="badge badge-warning mt-1">+${reservation.extraSeats} assentos</span>`;
+                }
+                
+                tableElement.innerHTML = `
+                    <div class="text-xl font-bold">Mesa ${table.number}</div>
+                    <div class="text-sm">Capacidade: ${table.capacity} pessoas</div>
+                    ${extraSeatsBadge}
+                    <div class="text-sm capitalize">${table.status === 'available' ? 'disponível' : table.status === 'reserved' ? 'reservada' : 'ocupada'}</div>
+                    <div class="mt-4 flex space-x-2">
+                        <button onclick="openEditTableModal(${table.id})" class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteTable(${table.id})" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(tableElement);
+            });
+        }
+        
+        function openAddTableModal() {
+            document.getElementById('addTableModal').classList.remove('hidden');
+            document.getElementById('tableNumber').focus();
+        }
+        
+        function openEditTableModal(tableId) {
+            const table = tables.find(t => t.id === tableId);
+            if (!table) return;
+            
+            document.getElementById('editTableId').value = table.id;
+            document.getElementById('editTableNumber').value = table.number;
+            document.getElementById('editTableCapacity').value = table.capacity;
+            
+            document.getElementById('editTableModal').classList.remove('hidden');
+            document.getElementById('editTableNumber').focus();
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+        
+        function addTable() {
+            const number = parseInt(document.getElementById('tableNumber').value);
+            const capacity = parseInt(document.getElementById('tableCapacity').value);
+            
+            if (tables.some(t => t.number === number)) {
+                alert('Já existe uma mesa com este número!');
+                return;
+            }
+            
+            const newId = tables.length > 0 ? Math.max(...tables.map(t => t.id)) + 1 : 1;
+            
+            tables.push({
+                id: newId,
+                number: number,
+                capacity: capacity,
+                status: 'available'
+            });
+            
+            closeModal('addTableModal');
+            renderTables();
+            document.getElementById('addTableForm').reset();
+        }
+        
+        function updateTable() {
+            const id = parseInt(document.getElementById('editTableId').value);
+            const number = parseInt(document.getElementById('editTableNumber').value);
+            const capacity = parseInt(document.getElementById('editTableCapacity').value);
+            
+            const tableIndex = tables.findIndex(t => t.id === id);
+            if (tableIndex === -1) return;
+            
+            // Check if number is already taken by another table
+            if (tables.some(t => t.number === number && t.id !== id)) {
+                alert('Já existe uma mesa com este número!');
+                return;
+            }
+            
+            tables[tableIndex].number = number;
+            tables[tableIndex].capacity = capacity;
+            
+            closeModal('editTableModal');
+            renderTables();
+        }
+        
+        function deleteTable(tableId) {
+            if (!confirm('Tem certeza que deseja excluir esta mesa?')) return;
+            
+            // Check if table is occupied or reserved
+            const table = tables.find(t => t.id === tableId);
+            if (table.status !== 'available') {
+                alert('Não é possível excluir uma mesa que está ocupada ou reservada!');
+                return;
+            }
+            
+            // Check if table has reservations
+            const hasReservations = reservations.some(r => 
+                (r.tableId === tableId || (r.tableIds && r.tableIds.includes(tableId)))
+            );
+            if (hasReservations) {
+                alert('Não é possível excluir uma mesa que possui reservas!');
+                return;
+            }
+            
+            tables = tables.filter(t => t.id !== tableId);
+            renderTables();
+        }
+        
+        // Customer Counter Functions
+        function updateCounter(type, change) {
+            if (change === -1 && counters[type] <= 0) return;
+            
+            counters[type] += change;
+            counters.total = counters.men + counters.women + counters.children;
+            
+            // Check if we just reached 50 people
+            if (counters.total === 50 && change === 1) {
+                const now = new Date();
+                counters.fullCapacityTime = now.toLocaleTimeString('pt-BR');
+                showCapacityAlert();
+            }
+            
+            updateCounterDisplays();
+        }
+        
+        function updateCounterDisplays() {
+            document.getElementById('menCount').textContent = counters.men;
+            document.getElementById('womenCount').textContent = counters.women;
+            document.getElementById('childrenCount').textContent = counters.children;
+            document.getElementById('totalCount').textContent = counters.total;
+            
+            // Highlight if capacity is reached
+            const totalElement = document.getElementById('totalCount');
+            if (counters.total >= 50) {
+                totalElement.classList.add('text-red-600', 'full-capacity');
+                totalElement.classList.remove('text-gray-800');
+            } else {
+                totalElement.classList.remove('text-red-600', 'full-capacity');
+                totalElement.classList.add('text-gray-800');
+            }
+        }
+        
+        function showCapacityAlert() {
+            if (counters.fullCapacityTime) {
+                document.getElementById('fullTime').textContent = counters.fullCapacityTime;
+                document.getElementById('capacityAlert').classList.remove('hidden');
+            }
+        }
+        
+        function resetCounters() {
+            if (!confirm('Tem certeza que deseja reiniciar todos os contadores?')) return;
+            
+            counters = {
+                men: 0,
+                women: 0,
+                children: 0,
+                total: 0,
+                fullCapacityTime: null
+            };
+            
+            updateCounterDisplays();
+            document.getElementById('capacityAlert').classList.add('hidden');
+        }
+        
+        // Reservation Management Functions
+        function renderReservations(filterDate = null) {
+            const container = document.getElementById('reservationsByDateContainer');
+            container.innerHTML = '';
+            
+            // Filter reservations by date if provided
+            const filteredReservations = filterDate ? 
+                reservations.filter(r => r.date === filterDate) : 
+                reservations;
+            
+            if (filteredReservations.length === 0) {
+                const message = filterDate ? 
+                    `Nenhuma reserva encontrada para ${new Date(filterDate).toLocaleDateString('pt-BR')}` : 
+                    'Nenhuma reserva cadastrada ainda.';
+                
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-8">
+                        <i class="fas fa-calendar text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">${message}</p>
+                        <button onclick="openAddReservationModal()" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                            Adicionar Primeira Reserva
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Group reservations by date
+            const reservationsByDate = {};
+            filteredReservations.forEach(reservation => {
+                const date = new Date(reservation.date);
+                const dateKey = date.toLocaleDateString('pt-BR');
+                
+                if (!reservationsByDate[dateKey]) {
+                    reservationsByDate[dateKey] = [];
+                }
+                
+                reservationsByDate[dateKey].push(reservation);
+            });
+            
+            // Sort dates chronologically
+            const sortedDates = Object.keys(reservationsByDate).sort((a, b) => {
+                return new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'));
+            });
+            
+            // Render reservations grouped by date
+            sortedDates.forEach(date => {
+                const dateReservations = reservationsByDate[date];
+                
+                const dateSection = document.createElement('div');
+                dateSection.className = 'mb-8';
+                
+                dateSection.innerHTML = `
+                    <h3 class="text-lg font-semibold mb-4 bg-gray-100 p-2 rounded">Reservas para ${date}</h3>
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="grid grid-cols-12 bg-gray-100 p-4 font-semibold text-gray-700">
+                            <div class="col-span-3">Cliente</div>
+                            <div class="col-span-2">Mesas</div>
+                            <div class="col-span-2">Pessoas</div>
+                            <div class="col-span-3">Detalhes</div>
+                            <div class="col-span-2 text-right">Ações</div>
+                        </div>
+                        <div id="reservations-${date}" class="divide-y divide-gray-200">
+                            <!-- Reservations for this date will be dynamically added here -->
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(dateSection);
+                
+                const dateReservationsContainer = document.getElementById(`reservations-${date}`);
+                
+                dateReservations.forEach(reservation => {
+                    const tableNumbers = getTableNumbersForReservation(reservation);
+                    const extraSeatsText = reservation.extraSeats ? ` (+${reservation.extraSeats} assentos)` : '';
+                    
+                    const reservationElement = document.createElement('div');
+                    reservationElement.className = 'grid grid-cols-12 p-4 items-center reservation-item';
+                    
+                    reservationElement.innerHTML = `
+                        <div class="col-span-3 font-medium">${reservation.customer}</div>
+                        <div class="col-span-2">${tableNumbers}</div>
+                        <div class="col-span-2">${reservation.people}${extraSeatsText}</div>
+                        <div class="col-span-3">
+                            ${reservation.combined ? '<span class="text-xs bg-gray-200 px-2 py-1 rounded">Mesas combinadas</span>' : ''}
+                        </div>
+                        <div class="col-span-2 flex justify-end space-x-2">
+                            <button onclick="openEditReservationModal(${reservation.id})" class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteReservation(${reservation.id})" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    
+                    dateReservationsContainer.appendChild(reservationElement);
+                });
+            });
+        }
+        
+        function filterReservations() {
+            const filterDate = document.getElementById('reservationFilterDate').value;
+            renderReservations(filterDate);
+        }
+        
+        function resetReservationFilter() {
+            document.getElementById('reservationFilterDate').value = '';
+            renderReservations();
+        }
+        
+        function getTableNumbersForReservation(reservation) {
+            if (reservation.tableIds && reservation.tableIds.length > 0) {
+                return reservation.tableIds.map(id => {
+                    const table = tables.find(t => t.id === id);
+                    return table ? table.number : '?';
+                }).join(', ');
+            }
+            if (reservation.tableId) {
+                const table = tables.find(t => t.id === reservation.tableId);
+                return table ? table.number : '?';
+            }
+            return 'N/A';
+        }
+        
+        function openAddReservationModal() {
+            document.getElementById('addReservationModal').classList.remove('hidden');
+            document.getElementById('reservationCustomer').focus();
+            
+            // Reset any previous selection
+            document.getElementById('selectedTableContainer').classList.add('hidden');
+            document.getElementById('combinedTablesContainer').classList.add('hidden');
+            document.getElementById('combinedTables').value = '';
+        }
+        
+        function openEditReservationModal(reservationId) {
+            const reservation = reservations.find(r => r.id === reservationId);
+            if (!reservation) return;
+            
+            document.getElementById('editReservationId').value = reservation.id;
+            document.getElementById('editReservationCustomer').value = reservation.customer;
+            document.getElementById('editReservationPeople').value = reservation.people;
+            document.getElementById('editReservationExtraSeats').value = reservation.extraSeats || 0;
+            
+            // Format date for date input
+            const date = new Date(reservation.date);
+            const formattedDate = date.toISOString().split('T')[0];
+            document.getElementById('editReservationDate').value = formattedDate;
+            
+            // Show currently assigned tables
+            const assignedTablesContainer = document.getElementById('editAssignedTablesContainer');
+            assignedTablesContainer.innerHTML = '';
+            
+            const tableIds = reservation.tableIds || [reservation.tableId];
+            tableIds.forEach(tableId => {
+                const table = tables.find(t => t.id === tableId);
+                if (table) {
+                    const tableElement = document.createElement('div');
+                    tableElement.className = 'flex items-center justify-between bg-gray-100 p-2 rounded mb-2';
+                    tableElement.innerHTML = `
+                        <span>Mesa ${table.number} (Capacidade: ${table.capacity})</span>
+                        <button onclick="removeTableFromEditReservation(${table.id})" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    assignedTablesContainer.appendChild(tableElement);
+                }
+            });
+            
+            // Show available tables for editing
+            const totalPeople = reservation.people + (reservation.extraSeats || 0);
+            showAvailableTablesForEditReservation(totalPeople);
+            
+            document.getElementById('editReservationModal').classList.remove('hidden');
+            document.getElementById('editReservationCustomer').focus();
+        }
+        
+        function removeTableFromEditReservation(tableId) {
+            const reservationId = parseInt(document.getElementById('editReservationId').value);
+            const reservation = reservations.find(r => r.id === reservationId);
+            if (!reservation) return;
+            
+            // Remove table from reservation
+            if (reservation.tableIds) {
+                reservation.tableIds = reservation.tableIds.filter(id => id !== tableId);
+            } else if (reservation.tableId === tableId) {
+                reservation.tableId = null;
+            }
+            
+            // Update table status to available
+            const tableIndex = tables.findIndex(t => t.id === tableId);
+            if (tableIndex !== -1) {
+                tables[tableIndex].status = 'available';
+                renderTables();
+            }
+            
+            // Re-render the edit form
+            openEditReservationModal(reservationId);
+        }
+        
+        function showAvailableTablesForReservation(totalPeople) {
+            const availableTablesContainer = document.getElementById('availableTablesContainer');
+            const combinedTablesContainer = document.getElementById('combinedTablesContainer');
+            const combinedTablesList = document.getElementById('combinedTablesList');
+            
+            availableTablesContainer.innerHTML = '';
+            combinedTablesList.innerHTML = '';
+            combinedTablesContainer.classList.add('hidden');
+            document.getElementById('selectedTableContainer').classList.add('hidden');
+            
+            // Get available tables that can accommodate the party alone
+            const availableTables = tables.filter(table => 
+                table.status === 'available' && 
+                table.capacity >= totalPeople
+            );
+            
+            if (availableTables.length > 0) {
+                availableTables.forEach(table => {
+                    const tableElement = document.createElement('div');
+                    tableElement.className = 'flex items-center justify-between bg-gray-100 p-2 rounded mb-2';
+                    tableElement.innerHTML = `
+                        <span>Mesa ${table.number} (Capacidade: ${table.capacity})</span>
+                        <button onclick="selectTableForReservation(${table.id})" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+                            Selecionar
+                        </button>
+                    `;
+                    availableTablesContainer.appendChild(tableElement);
+                });
+            } else {
+                availableTablesContainer.innerHTML = '<p class="text-sm text-gray-500">Nenhuma mesa disponível para esta quantidade de pessoas.</p>';
+            }
+            
+            // Show option to combine tables if no single table is available
+            if (availableTables.length === 0) {
+                const allAvailableTables = tables.filter(table => table.status === 'available');
+                
+                if (allAvailableTables.length >= 2) {
+                    combinedTablesContainer.classList.remove('hidden');
+                    
+                    // Show all available tables for combining
+                    allAvailableTables.forEach(table => {
+                        const tableElement = document.createElement('div');
+                        tableElement.className = 'flex items-center justify-between bg-gray-100 p-2 rounded mb-2';
+                        tableElement.innerHTML = `
+                            <span>Mesa ${table.number} (Capacidade: ${table.capacity})</span>
+                            <button onclick="addTableToCombination(${table.id})" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+                                Adicionar
+                            </button>
+                        `;
+                        combinedTablesList.appendChild(tableElement);
+                    });
+                }
+            }
+        }
+        
+        function showAvailableTablesForEditReservation(totalPeople) {
+            const availableTablesContainer = document.getElementById('editAvailableTablesContainer');
+            const combinedTablesContainer = document.getElementById('editCombinedTablesContainer');
+            const combinedTablesList = document.getElementById('editCombinedTablesList');
+            
+            availableTablesContainer.innerHTML = '';
+            combinedTablesList.innerHTML = '';
+            combinedTablesContainer.classList.add('hidden');
+            
+            // Get reservation ID
+            const reservationId = parseInt(document.getElementById('editReservationId').value);
+            const reservation = reservations.find(r => r.id === reservationId);
+            if (!reservation) return;
+            
+            // Get currently assigned table IDs
+            const assignedTableIds = reservation.tableIds || [reservation.tableId].filter(Boolean);
+            
+            // Get available tables that can accommodate the party alone
+            const availableTables = tables.filter(table => 
+                table.status === 'available' && 
+                table.capacity >= totalPeople &&
+                !assignedTableIds.includes(table.id)
+            );
+            
+            if (availableTables.length > 0) {
+                availableTables.forEach(table => {
+                    const tableElement = document.createElement('div');
+                    tableElement.className = 'flex items-center justify-between bg-gray-100 p-2 rounded mb-2';
+                    tableElement.innerHTML = `
+                        <span>Mesa ${table.number} (Capacidade: ${table.capacity})</span>
+                        <button onclick="addTableToEditReservation(${table.id})" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+                            Adicionar
+                        </button>
+                    `;
+                    availableTablesContainer.appendChild(tableElement);
+                });
+            } else if (assignedTableIds.length === 0) {
+                availableTablesContainer.innerHTML = '<p class="text-sm text-gray-500">Nenhuma mesa disponível para esta quantidade de pessoas.</p>';
+            }
+            
+            // Show option to combine tables if no single table is available
+            if (availableTables.length === 0 && assignedTableIds.length === 0) {
+                const allAvailableTables = tables.filter(table => 
+                    table.status === 'available' &&
+                    !assignedTableIds.includes(table.id)
+                );
+                
+                if (allAvailableTables.length >= 2) {
+                    combinedTablesContainer.classList.remove('hidden');
+                    
+                    // Show all available tables for combining
+                    allAvailableTables.forEach(table => {
+                        const tableElement = document.createElement('div');
+                        tableElement.className = 'flex items-center justify-between bg-gray-100 p-2 rounded mb-2';
+                        tableElement.innerHTML = `
+                            <span>Mesa ${table.number} (Capacidade: ${table.capacity})</span>
+                            <button onclick="addTableToEditCombination(${table.id})" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+                                Adicionar
+                            </button>
+                        `;
+                        combinedTablesList.appendChild(tableElement);
+                    });
+                }
+            }
+        }
+        
+        function selectTableForReservation(tableId) {
+            const table = tables.find(t => t.id === tableId);
+            if (!table) return;
+            
+            // Show selected table info
+            const selectedTableContainer = document.getElementById('selectedTableContainer');
+            const selectedTableInfo = document.getElementById('selectedTableInfo');
+            
+            selectedTableInfo.innerHTML = `Mesa ${table.number} (Capacidade: ${table.capacity})`;
+            selectedTableContainer.classList.remove('hidden');
+            
+            // Store selected table in a hidden field
+            document.getElementById('combinedTables').value = '';
+            document.getElementById('combinedTablesContainer').classList.add('hidden');
+            
+            // Create a hidden input if not exists
+            if (!document.getElementById('reservationTable')) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.id = 'reservationTable';
+                input.name = 'reservationTable';
+                document.getElementById('addReservationForm').appendChild(input);
+            }
+            
+            document.getElementById('reservationTable').value = tableId;
+        }
+        
+        function addTableToCombination(tableId) {
+            // Get current combined tables
+            let combinedTables = document.getElementById('combinedTables').value;
+            if (!combinedTables) {
+                combinedTables = [];
+            } else {
+                combinedTables = JSON.parse(combinedTables);
+            }
+            
+            // Add table to combination if not already there
+            if (!combinedTables.includes(tableId)) {
+                combinedTables.push(tableId);
+                document.getElementById('combinedTables').value = JSON.stringify(combinedTables);
+                
+                // Remove any single table selection
+                if (document.getElementById('reservationTable')) {
+                    document.getElementById('reservationTable').value = '';
+                }
+                
+                // Update UI to show selected tables
+                renderSelectedCombinedTables();
+            }
+        }
+        
+        function renderSelectedCombinedTables() {
+            const combinedTables = JSON.parse(document.getElementById('combinedTables').value || '[]');
+            const combinedTablesContainer = document.getElementById('combinedTablesContainer');
+            
+            // Create a container for selected tables
+            const selectedTablesContainer = document.createElement('div');
+            selectedTablesContainer.className = 'mt-4';
+            selectedTablesContainer.innerHTML = '<p class="text-sm font-medium mb-2">Mesas Selecionadas:</p>';
+            
+            // Add each selected table
+            combinedTables.forEach(tableId => {
+                const table = tables.find(t => t.id === tableId);
+                if (table) {
+                    const tableElement = document.createElement('div');
+                    tableElement.className = 'flex items-center justify-between bg-gray-100 p-2 rounded mb-2';
+                    tableElement.innerHTML = `
+                        <span>Mesa ${table.number} (Capacidade: ${table.capacity})</span>
+                        <button onclick="removeTableFromCombination(${table.id})" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    selectedTablesContainer.appendChild(tableElement);
+                }
+            });
+            
+            // Add total capacity
+            const totalCapacity = combinedTables.reduce((sum, tableId) => {
+                const table = tables.find(t => t.id === tableId);
+                return sum + (table ? table.capacity : 0);
+            }, 0);
+            
+            const totalElement = document.createElement('div');
+            totalElement.className = 'mt-2 text-sm font-medium';
+            totalElement.textContent = `Capacidade Total: ${totalCapacity} pessoas`;
+            selectedTablesContainer.appendChild(totalElement);
+            
+            // Insert or update the selected tables display
+            const existingContainer = document.getElementById('selectedCombinedTables');
+            if (existingContainer) {
+                existingContainer.replaceWith(selectedTablesContainer);
+            } else {
+                combinedTablesContainer.insertBefore(selectedTablesContainer, document.getElementById('combinedTablesList'));
+            }
+            
+            selectedTablesContainer.id = 'selectedCombinedTables';
+            
+            // Hide single table selection if exists
+            document.getElementById('selectedTableContainer').classList.add('hidden');
+        }
+        
+        function removeTableFromCombination(tableId) {
+            let combinedTables = JSON.parse(document.getElementById('combinedTables').value || '[]');
+            combinedTables = combinedTables.filter(id => id !== tableId);
+            document.getElementById('combinedTables').value = JSON.stringify(combinedTables);
+            
+            if (combinedTables.length > 0) {
+                renderSelectedCombinedTables();
+            } else {
+                const selectedContainer = document.getElementById('selectedCombinedTables');
+                if (selectedContainer) {
+                    selectedContainer.remove();
+                }
+            }
+        }
+        
+        function addTableToEditReservation(tableId) {
+            const reservationId = parseInt(document.getElementById('editReservationId').value);
+            const reservation = reservations.find(r => r.id === reservationId);
+            if (!reservation) return;
+            
+            // Add table to reservation
+            if (!reservation.tableIds) {
+                if (reservation.tableId) {
+                    reservation.tableIds = [reservation.tableId];
+                    delete reservation.tableId;
+                } else {
+                    reservation.tableIds = [];
+                }
+            }
+            
+            if (!reservation.tableIds.includes(tableId)) {
+                reservation.tableIds.push(tableId);
+                
+                // Update table status to reserved
+                const tableIndex = tables.findIndex(t => t.id === tableId);
+                if (tableIndex !== -1) {
+                    tables[tableIndex].status = 'reserved';
+                    renderTables();
+                }
+                
+                // Re-render the edit form
+                openEditReservationModal(reservationId);
+            }
+        }
+        
+        function addTableToEditCombination(tableId) {
+            const reservationId = parseInt(document.getElementById('editReservationId').value);
+            const reservation = reservations.find(r => r.id === reservationId);
+            if (!reservation) return;
+            
+            // Initialize tableIds array if not exists
+            if (!reservation.tableIds) {
+                reservation.tableIds = [];
+            }
+            
+            // Add table to combination if not already there
+            if (!reservation.tableIds.includes(tableId)) {
+                reservation.tableIds.push(tableId);
+                reservation.combined = true;
+                
+                // Update table status to reserved
+                const tableIndex = tables.findIndex(t => t.id === tableId);
+                if (tableIndex !== -1) {
+                    tables[tableIndex].status = 'reserved';
+                    renderTables();
+                }
+                
+                // Re-render the edit form
+                openEditReservationModal(reservationId);
+            }
+        }
+        
+        function addReservation() {
+            const customer = document.getElementById('reservationCustomer').value.trim();
+            const people = parseInt(document.getElementById('reservationPeople').value);
+            const date = document.getElementById('reservationDate').value;
+            const extraSeats = parseInt(document.getElementById('reservationExtraSeats').value) || 0;
+            
+            if (!customer || isNaN(people) || !date) {
+                alert('Por favor, preencha todos os campos obrigatórios!');
+                return;
+            }
+            
+            if (extraSeats > 3) {
+                alert('O número máximo de assentos adicionais é 3!');
+                return;
+            }
+            
+            // Check if tables are selected (either single table or combined tables)
+            const singleTableId = document.getElementById('reservationTable') ? parseInt(document.getElementById('reservationTable').value) : null;
+            const combinedTables = document.getElementById('combinedTables') ? JSON.parse(document.getElementById('combinedTables').value || '[]') : [];
+            
+            if (!singleTableId && combinedTables.length === 0) {
+                alert('Por favor, selecione pelo menos uma mesa!');
+                return;
+            }
+            
+            const newId = reservations.length > 0 ? Math.max(...reservations.map(r => r.id)) + 1 : 1;
+            
+            const reservationData = {
+                id: newId,
+                customer: customer,
+                people: people,
+                date: date,
+                extraSeats: extraSeats > 0 ? extraSeats : undefined,
+                combined: combinedTables.length > 0,
+                status: "reserved"
+            };
+            
+            // Assign tables to reservation
+            if (combinedTables.length > 0) {
+                reservationData.tableIds = combinedTables;
+            } else {
+                reservationData.tableId = singleTableId;
+            }
+            
+            // Calculate total capacity of selected tables
+            const selectedTables = combinedTables.length > 0 ? 
+                tables.filter(t => combinedTables.includes(t.id)) : 
+                [tables.find(t => t.id === singleTableId)];
+                
+            const totalCapacity = selectedTables.reduce((sum, table) => sum + table.capacity, 0);
+            const totalPeople = people + extraSeats;
+            
+            if (totalPeople > totalCapacity) {
+                alert(`A capacidade total das mesas selecionadas (${totalCapacity}) é menor que o número de pessoas (${totalPeople})!`);
+                return;
+            }
+            
+            reservations.push(reservationData);
+            
+            // Update table status to reserved
+            if (combinedTables.length > 0) {
+                combinedTables.forEach(tableId => {
+                    const tableIndex = tables.findIndex(t => t.id === tableId);
+                    if (tableIndex !== -1) {
+                        tables[tableIndex].status = 'reserved';
+                    }
+                });
+            } else {
+                const tableIndex = tables.findIndex(t => t.id === singleTableId);
+                if (tableIndex !== -1) {
+                    tables[tableIndex].status = 'reserved';
+                }
+            }
+            
+            closeModal('addReservationModal');
+            renderTables();
+            renderReservations();
+            document.getElementById('addReservationForm').reset();
+        }
+        
+        function updateReservation() {
+            const id = parseInt(document.getElementById('editReservationId').value);
+            const customer = document.getElementById('editReservationCustomer').value.trim();
+            const people = parseInt(document.getElementById('editReservationPeople').value);
+            const date = document.getElementById('editReservationDate').value;
+            const extraSeats = parseInt(document.getElementById('editReservationExtraSeats').value) || 0;
+            
+            if (!customer || isNaN(people) || !date) {
+                alert('Por favor, preencha todos os campos obrigatórios!');
+                return;
+            }
+            
+            if (extraSeats > 3) {
+                alert('O número máximo de assentos adicionais é 3!');
+                return;
+            }
+            
+            const reservationIndex = reservations.findIndex(r => r.id === id);
+            if (reservationIndex === -1) return;
+            
+            const reservation = reservations[reservationIndex];
+            
+            // Get currently assigned table IDs
+            const oldTableIds = reservation.tableIds || [reservation.tableId].filter(Boolean);
+            
+            // Update reservation data
+            reservations[reservationIndex] = {
+                ...reservation,
+                customer: customer,
+                people: people,
+                date: date,
+                extraSeats: extraSeats > 0 ? extraSeats : undefined
+            };
+            
+            // Calculate total capacity of selected tables
+            const selectedTables = oldTableIds.map(id => tables.find(t => t.id === id));
+            const totalCapacity = selectedTables.reduce((sum, table) => sum + table.capacity, 0);
+            const totalPeople = people + extraSeats;
+            
+            if (totalPeople > totalCapacity) {
+                alert(`A capacidade total das mesas selecionadas (${totalCapacity}) é menor que o número de pessoas (${totalPeople})!`);
+                return;
+            }
+            
+            closeModal('editReservationModal');
+            renderTables();
+            renderReservations();
+        }
+        
+        function deleteReservation(reservationId) {
+            if (!confirm('Tem certeza que deseja excluir esta reserva?')) return;
+            
+            const reservationIndex = reservations.findIndex(r => r.id === reservationId);
+            if (reservationIndex === -1) return;
+            
+            const reservation = reservations[reservationIndex];
+            
+            // Get table IDs from reservation
+            const tableIds = reservation.tableIds || [reservation.tableId].filter(Boolean);
+            
+            // Update table status to available
+            tableIds.forEach(tableId => {
+                const tableIndex = tables.findIndex(t => t.id === tableId);
+                if (tableIndex !== -1) {
+                    tables[tableIndex].status = 'available';
+                }
+            });
+            
+            // Remove reservation
+            reservations.splice(reservationIndex, 1);
+            
+            renderTables();
+            renderReservations();
+        }
+        
+        // Waiting List Functions
+        function renderWaitingList() {
+            const container = document.getElementById('waitingContainer');
+            container.innerHTML = '';
+            
+            if (waitingList.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-8">
+                        <i class="fas fa-clock text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">Nenhum cliente na fila de espera.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            waitingList.forEach(client => {
+                const clientElement = document.createElement('div');
+                clientElement.className = 'grid grid-cols-12 p-4 items-center waiting-item';
+                
+                // Calculate waiting time
+                const now = new Date();
+                const arrivalTime = new Date(client.arrivalTime);
+                const waitingTimeMs = now - arrivalTime;
+                const waitingMinutes = Math.floor(waitingTimeMs / (1000 * 60));
+                const waitingTime = waitingMinutes > 60 ? 
+                    `${Math.floor(waitingMinutes / 60)}h ${waitingMinutes % 60}m` : 
+                    `${waitingMinutes}m`;
+                
+                clientElement.innerHTML = `
+                    <div class="col-span-3 font-medium">${client.name}</div>
+                    <div class="col-span-2">${client.phone}</div>
+                    <div class="col-span-2">${client.people} pessoas</div>
+                    <div class="col-span-2">${waitingTime}</div>
+                    <div class="col-span-2">
+                        <span class="badge ${client.status === 'waiting' ? 'badge-info' : client.status === 'seated' ? 'badge-success' : 'badge-danger'}">
+                            ${client.status === 'waiting' ? 'Aguardando' : client.status === 'seated' ? 'Atendido' : 'Cancelado'}
+                        </span>
+                    </div>
+                    <div class="col-span-1 flex justify-end space-x-1">
+                        ${client.status === 'waiting' ? `
+                            <button onclick="updateWaitingStatus(${client.id}, 'seated')" class="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600" title="Marcar como atendido">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button onclick="updateWaitingStatus(${client.id}, 'canceled')" class="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600" title="Cancelar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        ` : `
+                            <button onclick="removeFromWaitingList(${client.id})" class="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600" title="Remover">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `}
+                    </div>
+                `;
+                
+                container.appendChild(clientElement);
+            });
+        }
+        
+        function openAddWaitingModal() {
+            document.getElementById('addWaitingModal').classList.remove('hidden');
+            document.getElementById('waitingCustomer').focus();
+        }
+        
+        function addToWaitingList() {
+            const name = document.getElementById('waitingCustomer').value.trim();
+            const phone = document.getElementById('waitingPhone').value.trim();
+            const people = parseInt(document.getElementById('waitingPeople').value);
+            
+            if (!name || !phone || isNaN(people)) {
+                alert('Por favor, preencha todos os campos!');
+                return;
+            }
+            
+            const newId = waitingList.length > 0 ? Math.max(...waitingList.map(c => c.id)) + 1 : 1;
+            
+            waitingList.push({
+                id: newId,
+                name: name,
+                phone: phone,
+                people: people,
+                status: 'waiting',
+                arrivalTime: new Date().toISOString()
+            });
+            
+            closeModal('addWaitingModal');
+            renderWaitingList();
+            document.getElementById('addWaitingForm').reset();
+        }
+        
+        function updateWaitingStatus(clientId, status) {
+            const clientIndex = waitingList.findIndex(c => c.id === clientId);
+            if (clientIndex === -1) return;
+            
+            waitingList[clientIndex].status = status;
+            
+            // If client is seated, update counters
+            if (status === 'seated') {
+                counters.men += Math.floor(waitingList[clientIndex].people / 2);
+                counters.women += Math.floor(waitingList[clientIndex].people / 2);
+                if (waitingList[clientIndex].people % 2 !== 0) {
+                    counters.men += 1;
+                }
+                counters.total = counters.men + counters.women + counters.children;
+                updateCounterDisplays();
+            }
+            
+            renderWaitingList();
+        }
+        
+        function removeFromWaitingList(clientId) {
+            if (!confirm('Tem certeza que deseja remover este cliente da fila de espera?')) return;
+            
+            waitingList = waitingList.filter(c => c.id !== clientId);
+            renderWaitingList();
+        }
+    </script>
+</body>
+</html>
